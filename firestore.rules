@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  match /anuncios/{id} {
+   // ALTERAR pelo UID real do administrador depois de entrar com Google.
+   function admin() { return request.auth != null && request.auth.uid == 'SUBSTITUIR_PELO_UID_DO_ADMIN'; }
+   function validNew() {
+    let d = request.resource.data;
+    return d.keys().hasOnly(['ownerUid','kind','title','condition','price','city','operation','description','photoURL','status','createdAt'])
+      && d.keys().hasAll(['ownerUid','kind','title','condition','price','city','operation','description','photoURL','status','createdAt'])
+      && d.ownerUid == request.auth.uid
+      && d.status == 'pendente'
+      && d.title is string && d.title.size() >= 3 && d.title.size() <= 90
+      && d.kind in ['Livro','Calculadora','Caderno','Mochila','Outro material escolar']
+      && d.condition in ['Novo','Como novo','Bom estado','Usado']
+      && d.operation in ['Vender','Trocar','Doar']
+      && d.price is number && d.price >= 0 && d.price <= 100000
+      && d.city is string && d.city.size() >= 2 && d.city.size() <= 70
+      && d.description is string && d.description.size() >= 5 && d.description.size() <= 700
+      && d.photoURL is string && d.photoURL.size() <= 1500
+      && d.createdAt == request.time;
+   }
+   allow get, list: if admin() || (resource.data.status == 'aprovado');
+   allow create: if request.auth != null && validNew();
+   allow update, delete: if admin();
+  }
+ }
+}
